@@ -1,0 +1,17 @@
+{
+    "contents" : "\n# This is the server logic for a Shiny web application.\n# You can find out more about building applications with Shiny here:\n#\n# http://shiny.rstudio.com\n#\n\nlibrary(shiny)\n\nshinyServer(function(input, output) {\n\n  output$distPlot <- renderPlot({\n    # generate bins based on input$bins from ui.R\n    data(wrld_simpl)\n    \n    rcp.equiv <- data.frame(name = c(\"RCP 2.6\", \"RCP 4.5\", \"RCP 6.0\", \"RCP 8.5\"), cod = c(26, 45, 60, 85))\n    year.equiv <- data.frame(name = c(\"2050\", \"2070\"), cod = c(50, 70))\n    type <- input$type\n    country <- input$country\n    plot(wrld_simpl)\n    e <- input$plot_brush\n    \n    \n    if(type == \"click\"){\n      plot(wrld_simpl)\n      if(is.null(e)){plot(wrld_simpl)}\n         else{\n         my.extent <- extent(e$xmin, e$xmax,e$ymin,e$ymax)\n         plot(crop(wrld_simpl, my.extent))}\n    } else if(type == \"con\"){\n    \n        if(country == \"World\"){\n          plot(wrld_simpl)\n        } else {\n        my.extent <- wrld_simpl[wrld_simpl$NAME %in% country,] %>% extent\n        plot(crop(wrld_simpl, my.extent))\n    }} else {\n      my.extent <- extent(input$minlon, input$maxlon, input$minlat, input$maxlat)\n      plot(crop(wrld_simpl, my.extent))\n    }\n  })\n  \n  output$visFun <- renderPrint({c(input$year, input$rcp, input$all.models)})\n  output$info <- renderText({\n    xy_range_str <- function(e) {\n      if(is.null(e)) return(\"NULL\\n\")\n      paste0(\"xmin=\", round(e$xmin, 1), \" xmax=\", round(e$xmax, 1), \n             \" ymin=\", round(e$ymin, 1), \" ymax=\", round(e$ymax, 1))\n    }\n    \n    paste0(\n      \"brush: \", xy_range_str(input$plot_brush)\n    )\n  })\n  \n})\n",
+    "created" : 1490291065805.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "823940197",
+    "id" : "6B712D16",
+    "lastKnownWriteTime" : 1490871172,
+    "path" : "~/Documents/GcModels/server.R",
+    "project_path" : "server.R",
+    "properties" : {
+    },
+    "relative_order" : 2,
+    "source_on_save" : false,
+    "type" : "r_source"
+}
