@@ -4,17 +4,16 @@
 #
 # http://shiny.rstudio.com
 #
+pacman::p_load(magrittr, dplyr, dtplyr, raster, openxlsx, ccafs, rasterVis, maptools, shiny)
+data(wrld_simpl)
+rcp.equiv <- data.frame(name = c("RCP 2.6", "RCP 4.5", "RCP 6.0", "RCP 8.5"), cod = c(26, 45, 60, 85))
+year.equiv <- data.frame(name = c("2050", "2070"), cod = c(50, 70))
 
-library(shiny)
 
 shinyServer(function(input, output) {
 
   output$distPlot <- renderPlot({
     # generate bins based on input$bins from ui.R
-    data(wrld_simpl)
-    
-    rcp.equiv <- data.frame(name = c("RCP 2.6", "RCP 4.5", "RCP 6.0", "RCP 8.5"), cod = c(26, 45, 60, 85))
-    year.equiv <- data.frame(name = c("2050", "2070"), cod = c(50, 70))
     type <- input$type
     country <- input$country
     plot(wrld_simpl)
@@ -51,6 +50,135 @@ shinyServer(function(input, output) {
     paste0(
       "brush: ", xy_range_str(input$plot_brush)
     )
+    
+  })
+  
+  output$table <- renderDataTable({
+    vars <- list()
+    for (a in input$year){
+      wc.vars.temp3 <- list()
+      for (x in input$rcp){
+        wc.vars.temp2 <- list()
+        for (m in input$all.models){
+          #rm(wc.vars.temp)
+          wc.vars.temp <- try(getData("CMIP5", var="bio", res=10, rcp=rcp.equiv$cod[rcp.equiv$name == x], year=year.equiv$cod[year.equiv$name == a], model=m))
+          #if (!is.null(wc.vars.temp)){
+            if (!inherits(wc.vars.temp, "try-error")){     # Some of the combinations are not available, don't stop if you try to download an unexisting combination
+              names(wc.vars.temp) <- paste0("bio_", 1:19)
+              wc.vars.temp2[[length(wc.vars.temp2)+1]] <- wc.vars.temp
+              names(wc.vars.temp2)[[length(wc.vars.temp2)]] <- m
+            }
+          #}
+        }
+        wc.vars.temp3[[length(wc.vars.temp3)+1]] <- wc.vars.temp2
+        names(wc.vars.temp3)[[length(wc.vars.temp3)]] <- x
+      }
+      vars[[length(vars)+1]] <- wc.vars.temp3
+      names(vars)[[length(vars)]] <- a
+    }
+    
+    ### 2) Filter the variables to a set desired by the user
+    
+    ## a) Select only some of the bioclimatic variables
+    
+    # Filter selected bios across all the layers
+    vars.2 <- vars
+    for(y in 1:length(vars.2)){   # year
+      for (r in 1:length(vars.2[[y]])){   # rcp
+        for (g in 1:length(vars.2[[y]][[r]])){   # gcm
+          vars.2[[y]][[r]][[g]] <- subset(vars.2[[y]][[r]][[g]], subset=paste0("bio_", input$selected.bio))
+        }
+      }
+    }
+    
+    
+    
+    ## b) Crop variables to a user-defined Extent
+    
+    ## cut the variables to the extent if a user-extent is available 
+    ## (this could be done after bioclim variables have been selected. It would be faster, but not all variables would be ready for an eventual selection later
+    if (exists("my.extent")){
+      vars.3 <- vars.2
+      for(y in 1:length(vars.3)){
+        for (r in 1:length(vars.3[[y]])){
+          for (g in 1:length(vars.3[[y]][[r]])){
+            vars.3[[y]][[r]][[g]] <- crop(vars.3[[y]][[r]][[g]], my.extent)
+          }
+        }
+      }
+    }
+    
+    
+    ###############################################
+    
+    ### 3) Calculate Ensembles and compare each model with them
+    ## a) Calculate ensembles
+    
+    ensembles <- vars.3    # Ensembles will be stored in this object
+    
+    for (y in 1:length(vars.3)){        # year
+      for (r in 1:length(vars.3[[y]])){        # rcp
+        bio.sub.ensemble <- stack()
+        for (b in 1:length(input$selected.bio)){         # for every bio-variable
+          gcm.sub.ensemble <- stack()
+          for (g in 1:length(vars.3[[y]][[r]])){      # across gcms
+            gcm.sub.ensemble <- stack(gcm.sub.ensemble, vars.3[[y]][[r]][[g]][[b]])   
+          }
+          # Calculate the mean across gcms
+          bio.sub.ensemble <- stack(bio.sub.ensemble, mean(gcm.sub.ensemble) %>% setNames(paste0("bio_", input$selected.bio[b])))
+        }
+        ensembles[[y]][[r]] <- bio.sub.ensemble    # and store it in "ensembles"
+      }
+    }
+    
+    ## b) Compare each GCM variable with the ensemble
+    # Create a table to store all the comparisons
+    
+    comp.table <- data.frame(year = character(), rcp = character(), gcm = character())
+    comp.table$year <- as.character(comp.table$year); comp.table$rcp <- as.character(comp.table$rcp); comp.table$gcm <- as.character(comp.table$gcm)
+    for (b in input$selected.bio){
+      comp.table$newcol <- numeric(nrow(comp.table))
+      names(comp.table)[ncol(comp.table)] <- paste0("bio_", b)
+    }
+    comp.table.template <- comp.table
+    
+    # Loop throw all bioclims of each GCM in each scenario and compare it to the correspondent ensemble
+    for(y in 1:length(ensembles)){
+      for (r in 1:length(ensembles[[y]])){
+        for (g in 1:length(vars.3[[y]][[r]])){
+          comp.table.temp <- comp.table.template
+          comp.table.temp[nrow(comp.table.temp)+1,1] <- names(ensembles)[[y]]    # these lines prepare the data for the gcm info to bind to the table
+          comp.table.temp[nrow(comp.table.temp),2] <- names(ensembles[[y]])[[r]]
+          comp.table.temp[nrow(comp.table.temp),3] <- names(vars.3[[y]][[r]])[[g]]
+          res <- cellStats(abs(vars.3[[y]][[r]][[g]] - ensembles[[y]][[r]]), stat="sum", na.rm=TRUE)  # Calculate the sum of the differences (in absolute value)
+          comp.table.temp[nrow(comp.table.temp), 4:(3+length(res))] <- res
+          comp.table <- rbind(comp.table, comp.table.temp)
+        }
+      }
+    }  
+    
+    ### Normalize the results, so different variables can be compared among them
+    # Function
+    normalizeMinMax <- function(x, newMin, newMax){ (x - min(x, na.rm=T))/(max(x, na.rm=T)-min(x, na.rm=T)) * (newMax - newMin) + newMin }
+    
+    comp.table.norm <- comp.table
+    
+    for (y in unique(comp.table.norm$year)){
+      for (r in unique(comp.table.norm$rcp)){
+        for (b in grep("bio", names(comp.table.norm))){
+          sc.values <- comp.table.norm[(comp.table.norm$year == y & comp.table.norm$rcp == r),b]
+          norm.values <- normalizeMinMax(sc.values, 0, 1)
+          comp.table.norm[(comp.table.norm$year == y & comp.table.norm$rcp == r),b] <- norm.values
+        }
+      }
+    }
+    
+    
+    ### Summarize the result: The final TOTAL column summarizes how similar is, in average, the layer to the ensemble
+    # The closest to 0 it is, the more similar
+    for (row in 1:nrow(comp.table.norm)){
+      comp.table.norm$total[row] <- mean(as.numeric(comp.table.norm[row, grep("bio", names(comp.table.norm))]), na.rm=T)
+    }
   })
   
 })
