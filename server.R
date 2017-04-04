@@ -185,4 +185,14 @@ shinyServer(function(input, output) {
     as.data.frame(comp.table.norm)
   })
   
+  output$myYeartabs = renderUI({
+    myTabs = lapply(paste('Year', input$year) , tabPanel)
+    do.call(tabsetPanel, myTabs)
+  })
+  
+  output$myBiotabs = renderUI({
+    myTabs = lapply(paste('Bio', input$selected.bio), tabPanel)
+    do.call(tabsetPanel, myTabs)
+  })
+  
 })

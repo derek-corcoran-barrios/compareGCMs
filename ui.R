@@ -114,7 +114,8 @@ shinyUI(fluidPage(
               verbatimTextOutput("info"),
               dataTableOutput("table")),
       tabPanel("Possible scenarios",
-               dataTableOutput("Possible"))
+               dataTableOutput("Possible")),
+      tabPanel("plots", uiOutput('myBiotabs'))
     ))
   )
 ))
