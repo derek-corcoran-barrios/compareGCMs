@@ -238,3 +238,5 @@ for (row in 1:nrow(comp.table.norm)){
 print(comp.table.norm)
 
 
+(0.5*5)+(0.3*5)+(1.2*0.2)
+

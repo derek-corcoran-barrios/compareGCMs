@@ -53,7 +53,7 @@ shinyServer(function(input, output) {
     
   })
   
-  output$table <- renderDataTable({
+  output$table <- renderTable({
     vars <- list()
     for (a in input$year){
       wc.vars.temp3 <- list()
@@ -82,11 +82,11 @@ shinyServer(function(input, output) {
     ## a) Select only some of the bioclimatic variables
     
     # Filter selected bios across all the layers
-    vars.2 <- vars
-    for(y in 1:length(vars.2)){   # year
-      for (r in 1:length(vars.2[[y]])){   # rcp
-        for (g in 1:length(vars.2[[y]][[r]])){   # gcm
-          vars.2[[y]][[r]][[g]] <- subset(vars.2[[y]][[r]][[g]], subset=paste0("bio_", input$selected.bio))
+    vars <- vars
+    for(y in 1:length(vars)){   # year
+      for (r in 1:length(vars[[y]])){   # rcp
+        for (g in 1:length(vars[[y]][[r]])){   # gcm
+          vars[[y]][[r]][[g]] <- subset(vars[[y]][[r]][[g]], subset=paste0("bio_", input$selected.bio))
         }
       }
     }
@@ -98,11 +98,11 @@ shinyServer(function(input, output) {
     ## cut the variables to the extent if a user-extent is available 
     ## (this could be done after bioclim variables have been selected. It would be faster, but not all variables would be ready for an eventual selection later
     if (exists("my.extent")){
-      vars.3 <- vars.2
-      for(y in 1:length(vars.3)){
-        for (r in 1:length(vars.3[[y]])){
-          for (g in 1:length(vars.3[[y]][[r]])){
-            vars.3[[y]][[r]][[g]] <- crop(vars.3[[y]][[r]][[g]], my.extent)
+      vars <- vars
+      for(y in 1:length(vars)){
+        for (r in 1:length(vars[[y]])){
+          for (g in 1:length(vars[[y]][[r]])){
+            vars[[y]][[r]][[g]] <- crop(vars[[y]][[r]][[g]], my.extent)
           }
         }
       }
@@ -114,18 +114,18 @@ shinyServer(function(input, output) {
     ### 3) Calculate Ensembles and compare each model with them
     ## a) Calculate ensembles
     
-    ensembles <- vars.3    # Ensembles will be stored in this object
+    ensembles <- vars    # Ensembles will be stored in this object
     
-    for (y in 1:length(vars.3)){        # year
-      for (r in 1:length(vars.3[[y]])){        # rcp
+    for (y in 1:length(vars)){        # year
+      for (r in 1:length(vars[[y]])){        # rcp
         bio.sub.ensemble <- stack()
         for (b in 1:length(input$selected.bio)){         # for every bio-variable
           gcm.sub.ensemble <- stack()
-          for (g in 1:length(vars.3[[y]][[r]])){      # across gcms
-            gcm.sub.ensemble <- stack(gcm.sub.ensemble, vars.3[[y]][[r]][[g]][[b]])   
+          for (g in 1:length(vars[[y]][[r]])){      # across gcms
+            gcm.sub.ensemble <- stack(gcm.sub.ensemble, vars[[y]][[r]][[g]][[b]])   
           }
           # Calculate the mean across gcms
-          bio.sub.ensemble <- stack(bio.sub.ensemble, mean(gcm.sub.ensemble) %>% setNames(paste0("bio_", input$selected.bio[b])))
+          bio.sub.ensemble <- stack(bio.sub.ensemble, mean(gcm.sub.ensemble, na.rm = TRUE) %>% setNames(paste0("bio_", input$selected.bio[b])))
         }
         ensembles[[y]][[r]] <- bio.sub.ensemble    # and store it in "ensembles"
       }
@@ -145,12 +145,12 @@ shinyServer(function(input, output) {
     # Loop throw all bioclims of each GCM in each scenario and compare it to the correspondent ensemble
     for(y in 1:length(ensembles)){
       for (r in 1:length(ensembles[[y]])){
-        for (g in 1:length(vars.3[[y]][[r]])){
+        for (g in 1:length(vars[[y]][[r]])){
           comp.table.temp <- comp.table.template
           comp.table.temp[nrow(comp.table.temp)+1,1] <- names(ensembles)[[y]]    # these lines prepare the data for the gcm info to bind to the table
           comp.table.temp[nrow(comp.table.temp),2] <- names(ensembles[[y]])[[r]]
-          comp.table.temp[nrow(comp.table.temp),3] <- names(vars.3[[y]][[r]])[[g]]
-          res <- cellStats(abs(vars.3[[y]][[r]][[g]] - ensembles[[y]][[r]]), stat="sum", na.rm=TRUE)  # Calculate the sum of the differences (in absolute value)
+          comp.table.temp[nrow(comp.table.temp),3] <- names(vars[[y]][[r]])[[g]]
+          res <- cellStats(abs(vars[[y]][[r]][[g]] - ensembles[[y]][[r]]), stat="sum", na.rm=TRUE)  # Calculate the sum of the differences (in absolute value)
           comp.table.temp[nrow(comp.table.temp), 4:(3+length(res))] <- res
           comp.table <- rbind(comp.table, comp.table.temp)
         }
@@ -177,8 +177,9 @@ shinyServer(function(input, output) {
     ### Summarize the result: The final TOTAL column summarizes how similar is, in average, the layer to the ensemble
     # The closest to 0 it is, the more similar
     for (row in 1:nrow(comp.table.norm)){
-      comp.table.norm$total[row] <- mean(as.numeric(comp.table.norm[row, grep("bio", names(comp.table.norm))]), na.rm=T)
+      comp.table.norm$total[row] <- mean(as.numeric(comp.table.norm[row, grep("bio", names(comp.table.norm))]), na.rm=TRUE)
     }
+    as.data.frame(comp.table.norm)
   })
   
 })
