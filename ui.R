@@ -104,7 +104,7 @@ shinyUI(fluidPage(
     mainPanel(
       plotOutput("distPlot", click = "plot_click", brush = "plot_brush"),
       h2("You have selected"),
-      p(textOutput("visFun")),
+      verbatimTextOutput("visFun"),
       verbatimTextOutput("info"),
       dataTableOutput("table")
     )

@@ -12,34 +12,26 @@ year.equiv <- data.frame(name = c("2050", "2070"), cod = c(50, 70))
 
 shinyServer(function(input, output) {
 
-  output$distPlot <- renderPlot({
-    # generate bins based on input$bins from ui.R
+  my.extent <- reactive({
     type <- input$type
     country <- input$country
-    plot(wrld_simpl)
-    e <- input$plot_brush
     
-    
-    if(type == "click"){
-      plot(wrld_simpl)
-      if(is.null(e)){plot(wrld_simpl)}
-         else{
-         my.extent <- extent(e$xmin, e$xmax,e$ymin,e$ymax)
-         plot(crop(wrld_simpl, my.extent))}
-    } else if(type == "con"){
-    
-        if(country == "World"){
-          plot(wrld_simpl)
-        } else {
-        my.extent <- wrld_simpl[wrld_simpl$NAME %in% country,] %>% extent
-        plot(crop(wrld_simpl, my.extent))
-    }} else {
-      my.extent <- extent(input$minlon, input$maxlon, input$minlat, input$maxlat)
-      plot(crop(wrld_simpl, my.extent))
-    }
+    if (type == "con") { if (country == "World") {extent(-180, 180, -90, 90)
+    } else {extent(wrld_simpl[wrld_simpl$NAME %in% country,])}
+    } else if (type == "num") {extent(input$minlon, input$maxlon, input$minlat, input$maxlat)
+    } else {e <- input$plot_brush;
+    if (is.null(e)) {extent(wrld_simpl)
+    } else {extent(e$xmin, e$xmax, e$ymin, e$ymax)}}
   })
   
-  output$visFun <- renderPrint({c(input$year, input$rcp, input$all.models)})
+  # PLOT THE STUDY AREA AND UPDATE IT
+  output$distPlot <- renderPlot({
+    # generate bins based on input$bins from ui.R
+    plot(crop(wrld_simpl, my.extent()))
+    
+  })
+  
+  output$visFun <- renderText({c(input$year, input$rcp, input$all.models)})
   output$info <- renderText({
     xy_range_str <- function(e) {
       if(is.null(e)) return("NULL\n")
@@ -97,16 +89,14 @@ shinyServer(function(input, output) {
     
     ## cut the variables to the extent if a user-extent is available 
     ## (this could be done after bioclim variables have been selected. It would be faster, but not all variables would be ready for an eventual selection later
-    if (exists("my.extent")){
       vars <- vars
       for(y in 1:length(vars)){
         for (r in 1:length(vars[[y]])){
           for (g in 1:length(vars[[y]][[r]])){
-            vars[[y]][[r]][[g]] <- crop(vars[[y]][[r]][[g]], my.extent)
+            vars[[y]][[r]][[g]] <- crop(vars[[y]][[r]][[g]], my.extent())
           }
         }
       }
-    }
     
     
     ###############################################
