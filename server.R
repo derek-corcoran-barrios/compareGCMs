@@ -53,6 +53,11 @@ shinyServer(function(input, output) {
     
   })
   
+  output$Possible <- renderDataTable({
+    Possible <- readRDS("Possible.rds")
+    as.data.frame(Possible)
+  })
+  
   output$table <- renderDataTable({
     vars <- list()
     for (a in input$year){

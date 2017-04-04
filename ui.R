@@ -107,12 +107,14 @@ shinyUI(fluidPage(
       ),
 
     # Show a plot of the generated distribution
-    mainPanel(
-      plotOutput("distPlot", click = "plot_click", brush = "plot_brush"),
-      h2("You have selected"),
-      verbatimTextOutput("visFun"),
-      verbatimTextOutput("info"),
-      dataTableOutput("table")
-    )
+    mainPanel(tabsetPanel(
+      tabPanel("Main",plotOutput("distPlot", click = "plot_click", brush = "plot_brush"),
+              h2("You have selected"),
+              verbatimTextOutput("visFun"),
+              verbatimTextOutput("info"),
+              dataTableOutput("table")),
+      tabPanel("Possible scenarios",
+               dataTableOutput("Possible"))
+    ))
   )
 ))
