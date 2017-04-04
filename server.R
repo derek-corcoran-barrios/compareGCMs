@@ -53,7 +53,7 @@ shinyServer(function(input, output) {
     
   })
   
-  output$table <- renderTable({
+  output$table <- renderDataTable({
     vars <- list()
     for (a in input$year){
       wc.vars.temp3 <- list()

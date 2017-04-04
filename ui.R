@@ -25,7 +25,7 @@ shinyUI(fluidPage(
                            "RCP 6.0" = "RCP 6.0",
                            "RCP 8.5" = "RCP 8.5"), inline = TRUE, selected = c("RCP 4.5")),
       checkboxGroupInput("all.models", "Select Models to inlcude:",
-                         c("AC", "BC", "CC", "CE", "CN", "GF", "GD", "GS", "HD", "HG", "HE", "IN", "IP", "MI", "MR", "MC", "MP", "MG","NO"), inline = TRUE, selected = c("BC", "CC")),
+                         c("AC", "BC", "CC", "CE", "CN", "GF", "GD", "GS", "HD", "HG", "HE", "IN", "IP", "MI", "MR", "MC", "MP", "MG","NO"), inline = TRUE, selected = c("BC", "CC", "CE")),
       checkboxGroupInput("selected.bio", "Bioclim Variables to include:",
                          c("Bio1" = 1, "Bio2" = 2, "Bio3" = 3, "Bio4" = 4, "Bio5" = 5, "Bio6" =6, "Bio7" = 7, "Bio8" = 8, "Bio9" = 9, "Bio10" = 10, "Bio11" = 11, "Bio12" = 12, "Bio13" = 13, "Bio14" = 14, "Bio15" = 15, "Bio16" = 16, "Bio17" = 17, "Bio18" = 18,"Bio19" = 19), inline = TRUE, selected = c(1, 5)),
       #actionButton("do", "Download layers"),
@@ -106,7 +106,7 @@ shinyUI(fluidPage(
       h2("You have selected"),
       p(textOutput("visFun")),
       verbatimTextOutput("info"),
-      tableOutput("table")
+      dataTableOutput("table")
     )
   )
 ))
