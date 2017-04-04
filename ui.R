@@ -5,9 +5,15 @@
 # http://shiny.rstudio.com
 #
 
-if (!require("pacman")) install.packages("pacman")
-pacman::p_load(magrittr, dplyr, dtplyr, raster, openxlsx, ccafs, rasterVis, maptools, shiny)
-
+library(magrittr)
+library(dplyr)
+library(raster)
+library(ccafs)
+library(rasterVis)
+library(maptools)
+library(shiny)
+library(rgeos)
+library(sp)
 shinyUI(fluidPage(
 
   # Application title

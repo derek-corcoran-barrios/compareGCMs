@@ -4,7 +4,15 @@
 #
 # http://shiny.rstudio.com
 #
-pacman::p_load(magrittr, dplyr, dtplyr, raster, openxlsx, ccafs, rasterVis, maptools, shiny)
+library(magrittr)
+library(dplyr)
+library(raster)
+library(ccafs)
+library(rasterVis)
+library(maptools)
+library(shiny)
+library(rgeos)
+library(sp)
 data(wrld_simpl)
 rcp.equiv <- data.frame(name = c("RCP 2.6", "RCP 4.5", "RCP 6.0", "RCP 8.5"), cod = c(26, 45, 60, 85))
 year.equiv <- data.frame(name = c("2050", "2070"), cod = c(50, 70))
