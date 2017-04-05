@@ -64,7 +64,9 @@ shinyServer(function(input, output) {
       wc.vars.temp3 <- list()
       for (x in input$rcp){
         wc.vars.temp2 <- list()
-        for (m in input$all.models){
+        withProgress(message = 'Download in progress',
+                     detail = 'This may take a while...', value = 0,
+        {for (m in input$all.models){
           #rm(wc.vars.temp)
           wc.vars.temp <- try(getData("CMIP5", var="bio", res=10, rcp=rcp.equiv$cod[rcp.equiv$name == x], year=year.equiv$cod[year.equiv$name == a], model=m))
           #if (!is.null(wc.vars.temp)){
@@ -75,6 +77,7 @@ shinyServer(function(input, output) {
             }
           #}
         }
+        })
         wc.vars.temp3[[length(wc.vars.temp3)+1]] <- wc.vars.temp2
         names(wc.vars.temp3)[[length(wc.vars.temp3)]] <- x
       }
