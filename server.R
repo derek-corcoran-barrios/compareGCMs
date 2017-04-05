@@ -20,7 +20,7 @@ year.equiv <- data.frame(name = c("2050", "2070"), cod = c(50, 70))
 
 shinyServer(function(input, output) {
 
-  my.extent <- reactive({
+  my.extent <- eventReactive(input$go,{
     type <- input$type
     country <- input$country
     
