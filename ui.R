@@ -100,7 +100,10 @@ shinyUI(fluidPage(
                         "Saint Pierre and Miquelon", "Saint Helena", "San Marino", "Turks and Caicos Islands", 
                         "Western Sahara", "Serbia", "Holy See (Vatican City)", "Svalbard", 
                         "Saint Martin", "Saint Barthelemy", "Guernsey", "Jersey", "South Georgia South Sandwich Islands", 
-                        "Taiwan"), multiple = TRUE, selected = "World") 
+                        "Taiwan"), multiple = TRUE, selected = "World"),
+                      h3("Warning"),
+                      p("This option is slower than the other two"),
+                      p("But its more precise")
                       #,submitButton("Update View", icon("refresh"))
                       ),
       actionButton("go", "Update extent")

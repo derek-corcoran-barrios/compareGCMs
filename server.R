@@ -110,7 +110,7 @@ shinyServer(function(input, output) {
         for (r in 1:length(vars[[y]])){
           for (g in 1:length(vars[[y]][[r]])){
             vars[[y]][[r]][[g]] <- if (class(my.extent$EXT) == "Extent")
-              {crop(vars[[y]][[r]][[g]], my.extent$EXT)} else {trim(mask(vars[[y]][[r]][[g]], my.extent$EXT))}
+              {crop(vars[[y]][[r]][[g]], my.extent$EXT)} else {mask(vars[[y]][[r]][[g]], my.extent$EXT)}
           }
         }
       }
