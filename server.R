@@ -16,26 +16,26 @@ library(sp)
 data(wrld_simpl)
 rcp.equiv <- data.frame(name = c("RCP 2.6", "RCP 4.5", "RCP 6.0", "RCP 8.5"), cod = c(26, 45, 60, 85))
 year.equiv <- data.frame(name = c("2050", "2070"), cod = c(50, 70))
-
+my.extent <- reactiveValues(EXT = extent(-180, 180, -90, 83))
 
 shinyServer(function(input, output) {
 
-  my.extent <- eventReactive(input$go,{
+   observeEvent(input$go,{
     type <- input$type
     country <- input$country
     
-    if (type == "con") { if (country == "World") {extent(-180, 180, -90, 90)
-    } else {extent(wrld_simpl[wrld_simpl$NAME %in% country,])}
-    } else if (type == "num") {extent(input$minlon, input$maxlon, input$minlat, input$maxlat)
+    if (type == "con") { if (country == "World") {my.extent$EXT <- extent(-180, 180, -90, 83)
+    } else {my.extent$EXT <- extent(wrld_simpl[wrld_simpl$NAME %in% country,])}
+    } else if (type == "num") {my.extent$EXT <- extent(input$minlon, input$maxlon, input$minlat, input$maxlat)
     } else {e <- input$plot_brush;
-    if (is.null(e)) {extent(wrld_simpl)
-    } else {extent(e$xmin, e$xmax, e$ymin, e$ymax)}}
+    if (is.null(e)) {my.extent$EXT <- extent(wrld_simpl)
+    } else {my.extent$EXT <- extent(e$xmin, e$xmax, e$ymin, e$ymax)}}
   })
   
   # PLOT THE STUDY AREA AND UPDATE IT
   output$distPlot <- renderPlot({
     # generate bins based on input$bins from ui.R
-    plot(crop(wrld_simpl, my.extent()))
+    plot(crop(wrld_simpl, my.extent$EXT))
     
   })
   
@@ -109,7 +109,7 @@ shinyServer(function(input, output) {
       for(y in 1:length(vars)){
         for (r in 1:length(vars[[y]])){
           for (g in 1:length(vars[[y]][[r]])){
-            vars[[y]][[r]][[g]] <- crop(vars[[y]][[r]][[g]], my.extent())
+            vars[[y]][[r]][[g]] <- crop(vars[[y]][[r]][[g]], my.extent$EXT)
           }
         }
       }
