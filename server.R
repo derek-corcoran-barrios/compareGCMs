@@ -25,7 +25,7 @@ shinyServer(function(input, output) {
     country <- input$country
     
     if (type == "con") { if (country == "World") {my.extent$EXT <- extent(-180, 180, -90, 83)
-    } else {my.extent$EXT <- extent(wrld_simpl[wrld_simpl$NAME %in% country,])}
+    } else {my.extent$EXT <- wrld_simpl[wrld_simpl$NAME %in% country,]}
     } else if (type == "num") {my.extent$EXT <- extent(input$minlon, input$maxlon, input$minlat, input$maxlat)
     } else {e <- input$plot_brush;
     if (is.null(e)) {my.extent$EXT <- extent(wrld_simpl)
@@ -109,7 +109,8 @@ shinyServer(function(input, output) {
       for(y in 1:length(vars)){
         for (r in 1:length(vars[[y]])){
           for (g in 1:length(vars[[y]][[r]])){
-            vars[[y]][[r]][[g]] <- crop(vars[[y]][[r]][[g]], my.extent$EXT)
+            vars[[y]][[r]][[g]] <- if (class(my.extent$EXT) == "Extent")
+              {crop(vars[[y]][[r]][[g]], my.extent$EXT)} else {trim(mask(vars[[y]][[r]][[g]], my.extent$EXT))}
           }
         }
       }
