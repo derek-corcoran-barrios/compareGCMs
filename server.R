@@ -38,7 +38,7 @@ shinyServer(function(input, output) {
   # PLOT THE STUDY AREA AND UPDATE IT
   output$distPlot <- renderPlot({
     # generate bins based on input$bins from ui.R
-    plot(crop(countriesHigh, my.extent$EXT))
+    plot(crop(countriesHigh, my.extent$EXT), axes = TRUE)
     box()
   })
   
@@ -70,7 +70,7 @@ shinyServer(function(input, output) {
       for (x in input$rcp){
         wc.vars.temp2 <- list()
         withProgress(message = 'Download in progress',
-                     detail = 'This may take a while...', value = 0,
+                     detail = 'This may take a while, 1/12', value = 0,
                      {for (m in input$all.models){
                        #rm(wc.vars.temp)
                        wc.vars.temp <- try(getData("CMIP5", var="bio", res=10, rcp=rcp.equiv$cod[rcp.equiv$name == x], year=year.equiv$cod[year.equiv$name == a], model=m))
@@ -98,13 +98,16 @@ shinyServer(function(input, output) {
     
     # Filter selected bios across all the layers
     # vars <- vars
+    withProgress(message = 'Processing',
+                 detail = 'This may take a while, 2/12', value = 1,
+                 {
     for(y in 1:length(vars)){   # year
       for (r in 1:length(vars[[y]])){   # rcp
         for (g in 1:length(vars[[y]][[r]])){   # gcm
           vars[[y]][[r]][[g]] <- subset(vars[[y]][[r]][[g]], subset=paste0("bio_", input$selected.bio))
         }
       }
-    }
+    }})
     
     
     
@@ -113,6 +116,10 @@ shinyServer(function(input, output) {
     ## cut the variables to the extent if a user-extent is available 
     ## (this could be done after bioclim variables have been selected. It would be faster, but not all variables would be ready for an eventual selection later
     # vars <- vars
+    withProgress(message = 'Processing',
+                 detail = 'This may take a while, 3/12', value = 1,
+                 {
+    
     for(y in 1:length(vars)){
       for (r in 1:length(vars[[y]])){
         for (g in 1:length(vars[[y]][[r]])){
@@ -120,7 +127,7 @@ shinyServer(function(input, output) {
           {crop(vars[[y]][[r]][[g]], my.extent$EXT)} else {crop(mask(vars[[y]][[r]][[g]], my.extent$EXT),extent(my.extent$EXT))}
         }
       }
-    }
+    }})
     my.extent$vars <- vars
   })  
   
@@ -131,7 +138,9 @@ shinyServer(function(input, output) {
     # output$ensembles <- reactive({  
     observeEvent(input$go, {
       ensembles <- my.extent$vars    # Ensembles will be stored in this object
-      
+      withProgress(message = 'Processing',
+                   detail = 'This may take a while, 4/12', value = 1,
+                   {
       for (y in 1:length(my.extent$vars)){        # year
         for (r in 1:length(my.extent$vars[[y]])){        # rcp
           bio.sub.ensemble <- stack()
@@ -145,7 +154,7 @@ shinyServer(function(input, output) {
           }
           ensembles[[y]][[r]] <- bio.sub.ensemble    # and store it in "ensembles"
         }
-      }
+      }})
       my.extent$ensembles <- ensembles
     })
     
@@ -219,7 +228,9 @@ shinyServer(function(input, output) {
       # Loop throw all bioclims of each GCM in each scenario and compare it to the correspondent ensemble
       
       plot.list <- my.extent$vars
-      
+      withProgress(message = 'Processing',
+                   detail = 'This may take a while, 5/12', value = 1,
+                   {
       for(y in 1:length(my.extent$ensembles)){
         for (r in 1:length(my.extent$ensembles[[y]])){
           for (g in 1:length(my.extent$vars[[y]][[r]])){
@@ -248,13 +259,15 @@ shinyServer(function(input, output) {
             plot.list[[y]][[r]][[g]] <- difference
           }
         }
-      }  
+      } })
       
       ### Normalize the results, so different variables can be compared among them
       # a) Tabla de valores absolutos
       normalizeMinMax <- function(x, newMin, newMax){ (x - min(x, na.rm=T))/(max(x, na.rm=T)-min(x, na.rm=T)) * (newMax - newMin) + newMin }
       comp.table.abs.norm <- comp.table.abs
-      
+      withProgress(message = 'Processing',
+                   detail = 'This may take a while, 6/12', value = 1,
+                   {
       for (y in unique(comp.table.abs.norm$year)){
         for (r in unique(comp.table.abs.norm$rcp)){
           for (b in grep("bio", names(comp.table.abs.norm))){
@@ -263,11 +276,14 @@ shinyServer(function(input, output) {
             comp.table.abs.norm[(comp.table.abs.norm$year == y & comp.table.abs.norm$rcp == r),b] <- norm.values
           }
         }
-      }
+      }})
       # Summarize result in a TOTAL final column
+      withProgress(message = 'Processing',
+                   detail = 'This may take a while, 7/12', value = 1,
+                   {
       for (row in 1:nrow(comp.table.abs.norm)){
         comp.table.abs.norm$total[row] <- mean(as.numeric(comp.table.abs.norm[row, grep("bio", names(comp.table.abs.norm))]), na.rm=T)
-      }
+      }})
       # comp.table.abs.norm
       
       
@@ -276,7 +292,9 @@ shinyServer(function(input, output) {
         (x - dataMin)/(dataMax-dataMin) * (newMax - newMin) + newMin }
       
       comp.table.net.norm <- comp.table.net
-      
+      withProgress(message = 'Processing',
+                   detail = 'This may take a while, 8/12', value = 1,
+                   {
       for (y in unique(comp.table.net.norm$year)){
         for (r in unique(comp.table.net.norm$rcp)){
           for (b in grep("bio", names(comp.table.net.norm))){
@@ -290,7 +308,7 @@ shinyServer(function(input, output) {
             comp.table.net.norm[(comp.table.net.norm$year == y & comp.table.net.norm$rcp == r),b] <- norm.values
           }
         }
-      }
+      }})
       # Summarize result in a TOTAL final column
       for (row in 1:nrow(comp.table.net.norm)){
         comp.table.net.norm$total[row] <- mean(as.numeric(comp.table.net.norm[row, grep("bio", names(comp.table.net.norm))]), na.rm=T)
@@ -309,7 +327,9 @@ shinyServer(function(input, output) {
     # output$explore.plot <- renderPlot({
       explore.plot <- my.extent$vars
       list.expl.plots <- list()
-      
+      withProgress(message = 'Processing',
+                   detail = 'This may take a while, 9/12', value = 1,
+                   {
       for (y in names(explore.plot)){
         for (r in names(explore.plot[[y]])){
           names.list <- names(explore.plot[[y]][[r]])
@@ -350,11 +370,14 @@ shinyServer(function(input, output) {
           # names(bio.plot.stack) <- paste0("bio_", input$selected.bio)
           # explore.plot[[y]][[r]] <- bio.plot.stack
         }
-      }
+      }})
       # explore.plot
       my.extent$list.expl.plots <- list.expl.plots
       
       ### THIS WILL CREATE AN OUTPUT OBJECT WITH EACH OF THE PLOTS
+      withProgress(message = 'Ploting...',
+                   detail = 'This may take a while, 10/12', value = 1,
+                   {
       for (i in 1:length(list.expl.plots)) {
         # Need local so that each item gets its own number. Without it, the value
         # of i in the renderPlot() will be the same across all instances, because
@@ -366,7 +389,7 @@ shinyServer(function(input, output) {
             list.expl.plots[[my_i]]
           })
         })
-      }
+      }})
     })
     
     
@@ -376,6 +399,9 @@ shinyServer(function(input, output) {
       # plot.list.2 <- plot.list <- my.extent$vars
       compare.plot <- my.extent$vars
       list.of.plots <- list()
+      withProgress(message = 'Ploting',
+                   detail = 'This may take a while, 11/12', value = 1,
+                   {
       for (y in names(compare.plot)){
         for (r in names(compare.plot[[y]])){
           names.list <- names(compare.plot[[y]][[r]])
@@ -419,7 +445,7 @@ shinyServer(function(input, output) {
           # names(bio.compare.plot.stack) <- paste0("bio_", input$selected.bio)
           # compare.plot[[y]][[r]] <- bio.compare.plot.stack
         }
-      }
+      }})
       my.extent$list.of.plots <- list.of.plots
       
       ### THIS WILL CREATE AN OUTPUT OBJECT WITH EACH OF THE PLOTS
@@ -440,13 +466,16 @@ shinyServer(function(input, output) {
     
     ### THIS USES renderUI TO PRINT AS MANY PLOTS AS THERE ARE (***explore.plot)
     output$explore.plot <- renderUI({
+      withProgress(message = 'Ploting',
+                   detail = 'This may take a while, 12/12', value = 1,
+                   {
       plot_expl_output_list <- lapply(1:length(my.extent$list.expl.plots), function(i) {
         plotname <- paste0("plot_expl", i)
         plotOutput(plotname)#, height = 280, width = 1500)
       })
       # Convert the list to a tagList - this is necessary for the list of items
       # to display properly.
-      do.call(tagList, plot_expl_output_list)
+      do.call(tagList, plot_expl_output_list)})
     })
     
 
