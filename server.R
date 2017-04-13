@@ -15,6 +15,7 @@ library(rgeos)
 library(sp)
 library(viridis)
 library(rworldxtra)
+library(rgdal)
 data(countriesHigh)
 rcp.equiv <- data.frame(name = c("RCP 2.6", "RCP 4.5", "RCP 6.0", "RCP 8.5"), cod = c(26, 45, 60, 85))
 year.equiv <- data.frame(name = c("2050", "2070"), cod = c(50, 70))
@@ -42,6 +43,7 @@ shinyServer(function(input, output) {
     box()
   })
   
+  output$Test <- renderText({c("The Class of my.vars$vars is", class(my.vars$vars), "the length is", length(my.vars$vars), "and its structure is")})
   output$visFun <- renderText({c(input$year, input$rcp, input$all.models)})
   output$info <- renderText({
     xy_range_str <- function(e) {
@@ -212,11 +214,11 @@ shinyServer(function(input, output) {
     ####################################################################################################
     ## b) Compare each GCM variable with the ensemble
     # Create a table to store all the comparisons
-    
+     
   
   
     output$table <- renderDataTable({
-      #validate(need(my.vars$vars,"Please, press Update variables"))
+      #validate(need(is.na(input$go == 0), "Please, press Update variables"))
       comp.table <- data.frame(year = character(), rcp = character(), gcm = character())
       comp.table$year <- as.character(comp.table$year); comp.table$rcp <- as.character(comp.table$rcp); comp.table$gcm <- as.character(comp.table$gcm)
       for (b in input$selected.bio){

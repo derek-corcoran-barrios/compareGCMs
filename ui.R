@@ -15,6 +15,7 @@ library(shiny)
 library(rgeos)
 library(sp)
 library(rworldxtra)
+library(rgdal)
 
 shinyUI(fluidPage(
   
@@ -44,7 +45,7 @@ shinyUI(fluidPage(
       h5("\n", "2. ZOOM-IN TO YOUR AREA OF INTEREST:"),
       radioButtons("type", "(the map will refresh when you press 'Update extent')",
                    c("Select extent on the map" = "click",
-                     "Choose counties" = "con",
+                     "Choose countries" = "con",
                      "Write the bounding-box coordinates" = "num")),
       #submitButton("Update View", icon("refresh")),
       conditionalPanel(condition = "input.type == 'num'",
@@ -55,7 +56,7 @@ shinyUI(fluidPage(
                        #,submitButton("Update View", icon("refresh"))
       ),
       conditionalPanel(condition = "input.type == 'con'",
-                       selectInput("country", "Or select a counrty",
+                       selectInput("country", "Or select a country",
                                    c("World","Aruba", "Afghanistan", "Angola", "Anguilla", "Albania", "Aland", 
                                      "Andorra", "United Arab Emirates", "Argentina", "Armenia", "American Samoa", 
                                      "Antarctica", "Ashmore and Cartier Islands", "French Southern and Antarctic Lands", 
@@ -121,7 +122,8 @@ shinyUI(fluidPage(
       tabPanel("Main",plotOutput("distPlot", click = "plot_click", brush = "plot_brush", height="800px"),
                h2("You have selected"),
                verbatimTextOutput("visFun"),
-               verbatimTextOutput("info")),
+               verbatimTextOutput("info"),
+               verbatimTextOutput("Test")),
                # dataTableOutput("table")),
       tabPanel("EXPLORE",
                h4("These are the layers and GCMs you have chosen. Here you can inspect them and decide
@@ -134,7 +136,7 @@ shinyUI(fluidPage(
                   scenarios using the boxes below each column. The values in each row result from comparing
                   chosen GCMs in the same scenario, and are obtained after summarizing how much
                   deviate from the average prediction accumulatively all pixels"),
-               h5("- Values close to 'cero' -for a variable or in total for a GCM at a given scenario- indicate that 
+               h5("- Values close to 'zero' -for a variable or in total for a GCM at a given scenario- indicate that 
                   the values in that model are equal to the average prediction among all models compared"),
                h5("- -1 indicates that the values in that the model has the most different and negative
                   predictions (i.e.: colder temperatures, rarer precipitations)"),
