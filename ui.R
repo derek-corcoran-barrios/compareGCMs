@@ -5,22 +5,14 @@
 # http://shiny.rstudio.com
 #
 
-library(magrittr)
-library(dplyr)
-library(raster)
-library(ccafs)
-library(rasterVis)
-library(maptools)
-library(shiny)
-library(rgeos)
-library(sp)
-library(rworldxtra)
-library(rgdal)
+if (!require("pacman")) install.packages("pacman")
+pacman::p_load(magrittr, dplyr, raster, ccafs, rasterVis, maptools, shiny, rgeos, sp, viridis, ggplot2, ggforce, rworldxtra, matrixStats)
 
 shinyUI(fluidPage(
   
   # Application title
-  titlePanel(div(img(src="sparc_logo.png", height=57,width=131), "Comparison of GCMs models")),
+  titlePanel(div(img(src="sparc_logo.png", height=100,width=250), "GCMcompareR: Comparison of GCMs models")),
+  # titlePanel("Comparison of GCMs models"),
   titlePanel(h4("This App will assist you in exploring and comparing climate projections from 
                 different Global Circulation Models (GCM) for projecting species distribution models")),
   titlePanel(h5("Make your choices in the left panel and find your results on the 'explore' and 'compare' tabs")),
@@ -29,133 +21,168 @@ shinyUI(fluidPage(
   sidebarLayout(
     sidebarPanel(
       h4("SET YOUR PARAMETERS"),
-      h5("1. CHOOSE THE SCENARIOS AND MODELS TO EVALUATE:"),
-      checkboxGroupInput("year", "- Years:",
+      h5("1. SCENARIOS:"),
+      radioButtons("year", "- Years:",
                          c("2050" = "2050",
-                           "2070" = "2070"), inline = TRUE, selected = c("2050")),
-      checkboxGroupInput("rcp", "- RCPs:",
-                         c("RCP 2.6" = "RCP 2.6",
-                           "RCP 4.5" = "RCP 4.5",
-                           "RCP 6.0" = "RCP 6.0",
-                           "RCP 8.5" = "RCP 8.5"), inline = TRUE, selected = c("RCP 4.5")),
-      checkboxGroupInput("all.models", "- Global Circulation Models (GCM): -find possible combinations in tab 'possible scenarios'-",
-                         c("AC", "BC", "CC", "CE", "CN", "GF", "GD", "GS", "HD", "HG", "HE", "IN", "IP", "MI", "MR", "MC", "MP", "MG","NO"), inline = TRUE, selected = c("BC", "CC", "CE")),
-      checkboxGroupInput("selected.bio", "- Bioclim Variables:",
-                         c("Bio1" = 1, "Bio2" = 2, "Bio3" = 3, "Bio4" = 4, "Bio5" = 5, "Bio6" =6, "Bio7" = 7, "Bio8" = 8, "Bio9" = 9, "Bio10" = 10, "Bio11" = 11, "Bio12" = 12, "Bio13" = 13, "Bio14" = 14, "Bio15" = 15, "Bio16" = 16, "Bio17" = 17, "Bio18" = 18,"Bio19" = 19), inline = TRUE, selected = c(1, 5)),
-      h5("\n", "2. ZOOM-IN TO YOUR AREA OF INTEREST:"),
+                           "2070" = "2070"), inline = TRUE, selected = c("2070")
+                         ),
+      radioButtons("rcp", "- RCPs:",
+                         c("RCP 2.6" = "26",
+                           "RCP 4.5" = "45",
+                           "RCP 6.0" = "60",
+                           "RCP 8.5" = "85"), inline = TRUE, selected = c("45")
+                         ),
+      checkboxGroupInput("gcm", "- Global Circulation Models (GCM): -find possible combinations in tab 'possible scenarios'-",
+                         c("access1_0","bcc_csm1_1","bnu_esm","cccma_canesm2","cesm1_cam5_1_fv2","cnrm_cm5","csiro_mk3_6_0","fio_esm","gfdl_cm3","gfdl_esm2g","gfdl_esm2m","giss_e2_h","giss_e2_r","HadGEM2_AO","inm_cm4","ipsl_cm5a_lr","ipsl_cm5a_mr","lasg_fgoals_g2","miroc_esm","miroc_esm_chem","miroc_miroc5","mohc_hadgem2_cc","mohc_hadgem2_es","mpi_esm_lr","mpi_esm_mr","mri_cgcm3","ncar_ccsm4","ncc_noresm1_m"), 
+                         inline = TRUE, 
+                         selected = c("access1_0","bcc_csm1_1","mpi_esm_lr","gfdl_esm2g","giss_e2_h","mpi_esm_mr","ncar_ccsm4","ncc_noresm1_m","mohc_hadgem2_cc","cnrm_cm5","gfdl_cm3","mohc_hadgem2_es","lasg_fgoals_g2","cesm1_cam5_1_fv2")
+                         ),
+      radioButtons("analysistype", "Choose one of these analysis:",
+                   c("Temperature vs Precipitation comparison" = "tVSp",
+                     "Custom comparison" = "custom")
+                   ),
+      conditionalPanel(condition = "input.analysistype == 'custom'",
+                       checkboxGroupInput("selected.bio", "",
+                                         c("Bio1" = 1, "Bio2" = 2, "Bio3" = 3, "Bio4" = 4, "Bio5" = 5, "Bio6" =6, "Bio7" = 7, "Bio8" = 8, "Bio9" = 9, "Bio10" = 10, "Bio11" = 11, "Bio12" = 12, "Bio13" = 13, "Bio14" = 14, "Bio15" = 15, "Bio16" = 16, "Bio17" = 17, "Bio18" = 18,"Bio19" = 19),
+                                         inline = TRUE,
+                                         selected = c(1,5,6,8,9,10,11, 12,13,14,16,17,18,19))
+                       ),
+                          
+      h5("\n", "2. STUDY AREA"),
       radioButtons("type", "(the map will refresh when you press 'Update extent')",
                    c("Select extent on the map" = "click",
-                     "Choose countries" = "con",
+                     "Choose counties" = "con",
                      "Write the bounding-box coordinates" = "num")),
-      #submitButton("Update View", icon("refresh")),
-      conditionalPanel(condition = "input.type == 'num'",
+        conditionalPanel(condition = "input.type == 'num'",
                        div(style="display:inline-block",numericInput("minlon", "Most Western longitude (negative for western hemisfere):", -180, min = -180, max = 180, step = 0.5)),
                        div(style="display:inline-block",numericInput("maxlon", "Most Eastern longitude (negative for western hemisfere):", 180, min = -180, max = 180, step = 0.5)),
                        numericInput("minlat", "Most Southern latitude (negative for southern hemisfere):", -90, min = -90, max = 90, step = 0.5),
                        numericInput("maxlat", "Most Northern latitude (negative for southern hemisfere):", 90, min = -90, max = 90, step = 0.5)
-                       #,submitButton("Update View", icon("refresh"))
-      ),
-      conditionalPanel(condition = "input.type == 'con'",
-                       selectInput("country", "Or select a country",
-                                   c("World","Aruba", "Afghanistan", "Angola", "Anguilla", "Albania", "Aland", 
-                                     "Andorra", "United Arab Emirates", "Argentina", "Armenia", "American Samoa", 
-                                     "Antarctica", "Ashmore and Cartier Islands", "French Southern and Antarctic Lands", 
-                                     "Antigua and Barbuda", "Australia", "Austria", "Azerbaijan", 
-                                     "Burundi", "Belgium", "Benin", "Burkina Faso", "Bangladesh", 
-                                     "Bulgaria", "Bahrain", "The Bahamas", "Bosnia and Herzegovina", 
-                                     "Saint Barthelemy", "Belarus", "Belize", "Bermuda", "Bolivia", 
-                                     "Brazil", "Barbados", "Brunei", "Bhutan", "Botswana", "Central African Republic", 
-                                     "Canada", "Switzerland", "Chile", "China", "Ivory Coast", "Clipperton Island", 
-                                     "Cameroon", "Cyprus No Mans Area", "Democratic Republic of the Congo", 
-                                     "Republic of the Congo", "Cook Islands", "Colombia", "Comoros", 
-                                     "Cape Verde", "Costa Rica", "Coral Sea Islands", "Cuba", "Curacao", 
-                                     "Cayman Islands", "Northern Cyprus", "Cyprus", "Czech Republic", 
-                                     "Germany", "Djibouti", "Dominica", "Denmark", "Dominican Republic", 
-                                     "Algeria", "Ecuador", "Egypt", "Eritrea", "Dhekelia Sovereign Base Area", 
-                                     "Spain", "Estonia", "Ethiopia", "Finland", "Fiji", "Falkland Islands", 
-                                     "France", "Faroe Islands", "Federated States of Micronesia", 
-                                     "Gabon", "Gaza", "United Kingdom", "Georgia", "Guernsey", "Ghana", 
-                                     "Gibraltar", "Guinea", "Gambia", "Guinea Bissau", "Equatorial Guinea", 
-                                     "Greece", "Grenada", "Greenland", "Guatemala", "Guam", "Guyana", 
-                                     "Hong Kong S.A.R.", "Heard Island and McDonald Islands", "Honduras", 
-                                     "Croatia", "Haiti", "Hungary", "Indonesia", "Isle of Man", "India", 
-                                     "Indian Ocean Territories", "British Indian Ocean Territory", 
-                                     "Ireland", "Iran", "Iraq", "Iceland", "Israel", "Italy", "Jamaica", 
-                                     "Jersey", "Jordan", "Japan", "Baykonur Cosmodrome", "Siachen Glacier", 
-                                     "Kazakhstan", "Kenya", "Kyrgyzstan", "Cambodia", "Kiribati", 
-                                     "Saint Kitts and Nevis", "Korea No Mans Area", "South Korea", 
-                                     "Kosovo", "Kuwait", "Laos", "Lebanon", "Liberia", "Libya", "Saint Lucia", 
-                                     "Liechtenstein", "Sri Lanka", "Lesotho", "Lithuania", "Luxembourg", 
-                                     "Latvia", "Macau S.A.R", "Saint Martin", "Morocco", "Monaco", 
-                                     "Moldova", "Madagascar", "Maldives", "Mexico", "Marshall Islands", 
-                                     "Macedonia", "Mali", "Malta", "Myanmar", "Montenegro", "Mongolia", 
-                                     "Northern Mariana Islands", "Mozambique", "Mauritania", "Montserrat", 
-                                     "Mauritius", "Malawi", "Malaysia", "Namibia", "New Caledonia", 
-                                     "Niger", "Norfolk Island", "Nigeria", "Nicaragua", "Niue", "Netherlands", 
-                                     "Norway", "Nepal", "Nauru", "New Zealand", "Oman", "Pakistan", 
-                                     "Panama", "Pitcairn Islands", "Peru", "Philippines", "Palau", 
-                                     "Papua New Guinea", "Poland", "Puerto Rico", "North Korea", "Portugal", 
-                                     "Paraguay", "French Polynesia", "Qatar", "Romania", "Russia", 
-                                     "Rwanda", "Western Sahara", "Saudi Arabia", "Sudan", "South Sudan", 
-                                     "Senegal", "Singapore", "South Georgia and South Sandwich Islands", 
-                                     "Saint Helena", "Solomon Islands", "Sierra Leone", "El Salvador", 
-                                     "San Marino", "Somaliland", "Somalia", "Saint Pierre and Miquelon", 
-                                     "Republic of Serbia", "Sao Tome and Principe", "Suriname", "Slovakia", 
-                                     "Slovenia", "Sweden", "Swaziland", "Sint Maarten", "Seychelles", 
-                                     "Syria", "Turks and Caicos Islands", "Chad", "Togo", "Thailand", 
-                                     "Tajikistan", "Turkmenistan", "East Timor", "Tonga", "Trinidad and Tobago", 
-                                     "Tunisia", "Turkey", "Tuvalu", "Taiwan", "United Republic of Tanzania", 
-                                     "Uganda", "Ukraine", "United States Minor Outlying Islands", 
-                                     "Uruguay", "United States of America", "US Naval Base Guantanamo Bay", 
-                                     "Uzbekistan", "Vatican", "Saint Vincent and the Grenadines", 
-                                     "Venezuela", "British Virgin Islands", "United States Virgin Islands", 
-                                     "Vietnam", "Vanuatu", "West Bank", "Wallis and Futuna", "Akrotiri Sovereign Base Area", 
-                                     "Samoa", "Yemen", "South Africa", "Zambia", "Zimbabwe"), multiple = TRUE, selected = "World") 
-                       #,submitButton("Update View", icon("refresh"))
-      ),
-      h5("\n", "3. PRESS THE BUTTON TO PROCEED:"),
-      actionButton("go", "Update variables and extent")
+                       ),
+        conditionalPanel(condition = "input.type == 'con'",
+                       selectInput("country", "Or select a counrty",
+                                   c("World", "Antigua and Barbuda", "Algeria", "Azerbaijan", "Albania", 
+                                     "Armenia", "Angola", "American Samoa", "Argentina", "Australia", 
+                                     "Bahrain", "Barbados", "Bermuda", "Bahamas", "Bangladesh", "Belize", 
+                                     "Bosnia and Herzegovina", "Bolivia", "Burma", "Benin", "Solomon Islands", 
+                                     "Brazil", "Bulgaria", "Brunei Darussalam", "Canada", "Cambodia", 
+                                     "Sri Lanka", "Congo", "Democratic Republic of the Congo", "Burundi", 
+                                     "China", "Afghanistan", "Bhutan", "Chile", "Cayman Islands", 
+                                     "Cameroon", "Chad", "Comoros", "Colombia", "Costa Rica", "Central African Republic", 
+                                     "Cuba", "Cape Verde", "Cook Islands", "Cyprus", "Denmark", "Djibouti", 
+                                     "Dominica", "Dominican Republic", "Ecuador", "Egypt", "Ireland", 
+                                     "Equatorial Guinea", "Estonia", "Eritrea", "El Salvador", "Ethiopia", 
+                                     "Austria", "Czech Republic", "French Guiana", "Finland", "Fiji", 
+                                     "Falkland Islands (Malvinas)", "Micronesia, Federated States of", 
+                                     "French Polynesia", "France", "Gambia", "Gabon", "Georgia", "Ghana", 
+                                     "Grenada", "Greenland", "Germany", "Guam", "Greece", "Guatemala", 
+                                     "Guinea", "Guyana", "Haiti", "Honduras", "Croatia", "Hungary", 
+                                     "Iceland", "India", "Iran (Islamic Republic of)", "Israel", "Italy", 
+                                     "Cote d'Ivoire", "Iraq", "Japan", "Jamaica", "Jordan", "Kenya", 
+                                     "Kyrgyzstan", "Korea, Democratic People's Republic of", "Kiribati", 
+                                     "Korea, Republic of", "Kuwait", "Kazakhstan", "Lao People's Democratic Republic", 
+                                     "Lebanon", "Latvia", "Belarus", "Lithuania", "Liberia", "Slovakia", 
+                                     "Liechtenstein", "Libyan Arab Jamahiriya", "Madagascar", "Martinique", 
+                                     "Mongolia", "Montserrat", "The former Yugoslav Republic of Macedonia", 
+                                     "Mali", "Morocco", "Mauritius", "Mauritania", "Malta", "Oman", 
+                                     "Maldives", "Mexico", "Malaysia", "Mozambique", "Malawi", "New Caledonia", 
+                                     "Niue", "Niger", "Aruba", "Anguilla", "Belgium", "Hong Kong", 
+                                     "Northern Mariana Islands", "Faroe Islands", "Andorra", "Gibraltar", 
+                                     "Isle of Man", "Luxembourg", "Macau", "Monaco", "Palestine", 
+                                     "Montenegro", "Mayotte", "Aaland Islands", "Norfolk Island", 
+                                     "Cocos (Keeling) Islands", "Antarctica", "Bouvet Island", "French Southern and Antarctic Lands", 
+                                     "Heard Island and McDonald Islands", "British Indian Ocean Territory", 
+                                     "Christmas Island", "United States Minor Outlying Islands", "Vanuatu", 
+                                     "Nigeria", "Netherlands", "Norway", "Nepal", "Nauru", "Suriname", 
+                                     "Nicaragua", "New Zealand", "Paraguay", "Peru", "Pakistan", "Poland", 
+                                     "Panama", "Portugal", "Papua New Guinea", "Guinea-Bissau", "Qatar", 
+                                     "Reunion", "Romania", "Republic of Moldova", "Philippines", "Puerto Rico", 
+                                     "Russia", "Rwanda", "Saudi Arabia", "Saint Kitts and Nevis", 
+                                     "Seychelles", "South Africa", "Lesotho", "Botswana", "Senegal", 
+                                     "Slovenia", "Sierra Leone", "Singapore", "Somalia", "Spain", 
+                                     "Saint Lucia", "Sudan", "Sweden", "Syrian Arab Republic", "Switzerland", 
+                                     "Trinidad and Tobago", "Thailand", "Tajikistan", "Tokelau", "Tonga", 
+                                     "Togo", "Sao Tome and Principe", "Tunisia", "Turkey", "Tuvalu", 
+                                     "Turkmenistan", "United Republic of Tanzania", "Uganda", "United Kingdom", 
+                                     "Ukraine", "United States", "Burkina Faso", "Uruguay", "Uzbekistan", 
+                                     "Saint Vincent and the Grenadines", "Venezuela", "British Virgin Islands", 
+                                     "Viet Nam", "United States Virgin Islands", "Namibia", "Wallis and Futuna Islands", 
+                                     "Samoa", "Swaziland", "Yemen", "Zambia", "Zimbabwe", "Indonesia", 
+                                     "Guadeloupe", "Netherlands Antilles", "United Arab Emirates", 
+                                     "Timor-Leste", "Pitcairn Islands", "Palau", "Marshall Islands", 
+                                     "Saint Pierre and Miquelon", "Saint Helena", "San Marino", "Turks and Caicos Islands", 
+                                     "Western Sahara", "Serbia", "Holy See (Vatican City)", "Svalbard", 
+                                     "Saint Martin", "Saint Barthelemy", "Guernsey", "Jersey", "South Georgia South Sandwich Islands", 
+                                     "Taiwan"), multiple = TRUE, selected = "World") 
+                       # ,submitButton("Update View", icon("refresh"))
+                       ),
+      actionButton("updateExtent", "Update Extent", icon("refresh")),
+      
+      h5("\n", "3. COMPARE GCMS!"),
+      actionButton("go", "Compare")
     ),
     
     # Show a plot of the generated distribution
-    mainPanel(tabsetPanel(
-      tabPanel("Main",plotOutput("distPlot", click = "plot_click", brush = "plot_brush", height="800px"),
-               h2("You have selected"),
-               verbatimTextOutput("visFun"),
-               verbatimTextOutput("info"),
-               verbatimTextOutput("Test")),
-               # dataTableOutput("table")),
-      tabPanel("EXPLORE",
-               h4("These are the layers and GCMs you have chosen. Here you can inspect them and decide
-                  if any of them does not have enough quality to be used in the comparison"),
-               uiOutput("explore.plot")),
-               # plotOutput("explore.plot")),
-      tabPanel("COMPARE",
-               h3("Table summarizing comparisons with ensembles"),
-               h5("This table contains the results of the comparison exercise. You might filter different
-                  scenarios using the boxes below each column. The values in each row result from comparing
-                  chosen GCMs in the same scenario, and are obtained after summarizing how much
-                  deviate from the average prediction accumulatively all pixels"),
-               h5("- Values close to 'zero' -for a variable or in total for a GCM at a given scenario- indicate that 
-                  the values in that model are equal to the average prediction among all models compared"),
-               h5("- -1 indicates that the values in that the model has the most different and negative
-                  predictions (i.e.: colder temperatures, rarer precipitations)"),
-               h5("- +1 indicates that the values in that the model has the most different and positive
-                  predictions (i.e.: warmer temperatures, more precipitations)"),
-               dataTableOutput("table"),
-               h3("Plots of comparisons with ensembles"),
-               h5("Red colors/positive values indicate positive deviations from average prediction
-                  among compared GCMs (i.e.: more temperature/precipitation), blue colors(negative
-                  values indicate negative deviations"),
-               uiOutput("compare.plot"), h5("If you have detected patterns that you do not like in any GCM, 
-                  you might consider repeating the analysis after removing those GCM,
-                                            and working with a comparison which is not 'contaminated' by 'bad' models")),
-      tabPanel("Possible scenarios",
-               dataTableOutput("Possible"))
-               
-               # plotOutput("compare.plot"))
+    mainPanel(
+      tabsetPanel(type="pills",
+            tabPanel("Main"
+                     ,plotOutput("distPlot", click = "plot_click", brush = "plot_brush", height="800px")
+                     # ,h2("You have selected")
+                     # ,verbatimTextOutput("visFun")
+                     # ,verbatimTextOutput("info")
+                     #,dataTableOutput("table")
+                  ),
+            tabPanel("Possible scenarios",
+                     dataTableOutput("Possible")),
+            tabPanel("EXPLORE variables' plots",
+                     h4("These are the layers and GCMs you have chosen as downloaded."),
+                     h5("(this takes a minute to print, especially if you selected a large area)"),
+                     uiOutput("GCMPlots")),
 
-      # tabPanel("plots", uiOutput('myBiotabs'))
+            tabPanel("COMPARE - Results",
+                     h3("Comparisons result"),
+                     h5("The table is sorted according to the simmilarity of each model to the ensemble predictions (lower dist,
+                        which is, the distance from the center (coordinates 0,0) to the position of the model)."),
+                     h5("It can be sorted according to temperature or precipitation, as desired"),
+                     dataTableOutput("table"),
+                     h3("Figure for Precipitation and temperature comparisons"),
+                     h5("This figure represents together temperature and precipitation comparisons. Models closer to the center
+                        are those more similar to the ensemble at both characteristics."),
+                     plotOutput("pVSt.plot", width=600, height=600),
+                     ## GCM CHOICE
+                     h4("CHOOSING GCMS: "),
+                     radioButtons("GCMchoice", "Pick a method to select GCMs:",
+                                  c("Best bracketing" = "dif",
+                                  "Most similar to ensemble" = "sim"),
+                                  inline = T, 
+                                  selected = "sim"),
+                     conditionalPanel(condition = "input.GCMchoice == 'dif'",
+                                      selectInput("hot_dry", "1. Select you choice for hot/dry model: ",
+                                                c("", "access1_0","bcc_csm1_1","bnu_esm","cccma_canesm2","cesm1_cam5_1_fv2","cnrm_cm5","csiro_mk3_6_0","fio_esm","gfdl_cm3","gfdl_esm2g","gfdl_esm2m","giss_e2_h","giss_e2_r","HadGEM2_AO","inm_cm4","ipsl_cm5a_lr","ipsl_cm5a_mr","lasg_fgoals_g2","miroc_esm","miroc_esm_chem","miroc_miroc5","mohc_hadgem2_cc","mohc_hadgem2_es","mpi_esm_lr","mpi_esm_mr","mri_cgcm3","ncar_ccsm4","ncc_noresm1_m")
+                                                , multiple = FALSE, selected = NULL), 
+                                      selectInput("cold_wet", "2. Select you choice for cold/wet model: ",
+                                                c("", "access1_0","bcc_csm1_1","bnu_esm","cccma_canesm2","cesm1_cam5_1_fv2","cnrm_cm5","csiro_mk3_6_0","fio_esm","gfdl_cm3","gfdl_esm2g","gfdl_esm2m","giss_e2_h","giss_e2_r","HadGEM2_AO","inm_cm4","ipsl_cm5a_lr","ipsl_cm5a_mr","lasg_fgoals_g2","miroc_esm","miroc_esm_chem","miroc_miroc5","mohc_hadgem2_cc","mohc_hadgem2_es","mpi_esm_lr","mpi_esm_mr","mri_cgcm3","ncar_ccsm4","ncc_noresm1_m")
+                                                , multiple = FALSE, selected = NULL),
+                                      h5("3. Most central model: ", htmlOutput("central", inline=T)),
+                                      actionButton("calc.diss", "Calculate dissimilars"),
+                                      # h5("4. Most different model to the previous three: ", textOutput("mostdissimilar1", inline=T)),
+                                      # h5("5. Most different model to the previous four: ", textOutput("mostdissimilar2", inline=T))#,
+                                      h5("4. Most different model to the previous three: ", htmlOutput("mostdissimilar1", inline=T)),
+                                      h5("5. Most different model to the previous four: ", htmlOutput("mostdissimilar2", inline=T))#,
+                                      ),
+                       conditionalPanel(condition = "input.GCMchoice == 'sim'",
+                                      h5("These are the models inside a 95% confidence interval"),
+                                      dataTableOutput("similars")
+                                      )
+                     ),
+            
+            tabPanel("COMPARE - spatial plots",
+                     h3("Plots of comparisons with ensembles for each variable"),
+                     h5("Violet/positive values indicate a higher prediction than the average
+                        among compared GCMs (i.e.: larger increase of temperature/precipitation), yellow/negative
+                        values indicate a lower prediction"),
+                     h5("(this takes a minute to print, especially if you selected a large area)"),
+                     uiOutput("differencePlots"))#,
     ))
   )
 ))
